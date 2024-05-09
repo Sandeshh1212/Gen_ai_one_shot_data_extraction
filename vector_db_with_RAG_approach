@@ -1,0 +1,53 @@
+import pandas as pd
+# from langchain.document_loaders.pdf import UnstructuredPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
+import pathlib
+import textwrap
+import google.generativeai as genai
+from pypdf import PdfReader
+import os
+import json
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain.chains import RetrievalQA
+from langchain import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.document_loaders import PyPDFLoader
+
+
+os.environ['GOOGLE_API_KEY']="AIzaSyD1M1zw-qvlctf2Mu-A_T54xtcMRH6k6Es"
+
+def get_data_from_pdf(pdf_path):
+    loader = PyPDFLoader(pdf_path)
+    pages = loader.load_and_split()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
+    context = "\n\n".join(str(p.page_content) for p in pages)
+    # print(context)
+    texts = text_splitter.split_text(context)
+    return texts
+
+def create_save_vector_db(pdf_file_path, vector_db_path='VectorDB'):
+    os.makedirs(vector_db_path, exist_ok=True)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    texts = get_data_from_pdf(pdf_file_path)
+    vector_index_test = FAISS.from_texts(texts, embeddings)
+    vector_index_test.save_local(vector_db_path)
+
+def create_save_vector_db_with_text(text, vector_db_path='VectorDB'):
+    os.makedirs(vector_db_path, exist_ok=True)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    vector_index_test = FAISS.from_texts(text, embeddings)
+    vector_index_test.save_local(vector_db_path)
+    
+
+def load_vector_db(vector_db_path="VectorDB"):
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    vector_db = FAISS.load_local(vector_db_path, embeddings, allow_dangerous_deserialization=True)
+    return vector_db
+        
+# retriver = vector_index_test.as_retriever(search_kwargs={"K":3, "score_threshold":0.9})
+# retriver
+
+# create_save_vector_db(r"C:\Users\2332327\envs\pdf_data\uploaded_file\BPS_22KB_Group Insurance Commission_MultiplePlans v4 Final.pdf_SignedJD_2-10-23.pdf")
+# db = load_vector_db()
