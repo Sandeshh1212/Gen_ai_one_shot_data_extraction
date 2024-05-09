@@ -1,0 +1,99 @@
+import pandas as pd
+import numpy as np
+import os
+import re
+from  PyPDF2  import PdfReader 
+import json
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS']="C:/Users/2125065/Project_Gen/proj_gen/GCP/gbg-poc-migrate-0a6b122a1db6.json"
+
+import google.generativeai as genai
+
+import streamlit as st
+import tempfile
+# from gen_code import  get_gemini_hcr_2
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from langchain_community.document_loaders import PyPDFLoader
+
+
+
+def file_read(pdf_path):
+    text = " "
+    try:
+        reader = PdfReader(pdf_path)
+        for page in reader.pages:
+            text += page.extract_text()
+        # print (text)
+
+    except Exception as e :
+        print(f"Error reading PDF: {e}")
+
+    return text
+
+def save_uploaded_pdf (uploaded_file):
+    # st.title("PDF to text")
+
+    # uploaded_file = st.file_uploader("Uploaded PDF ", type=["pdf"])
+    # if uploaded_file:
+    save_dir = r"C:\Users\2125065\Project_Gen\proj_gen\gen_stem_files"
+    if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+    pdf_path = os.path.join(save_dir,uploaded_file.name)
+    with open(pdf_path,"wb") as f:
+            f.write(uploaded_file.getvalue())
+    st.success("PDF uploaded successfully and saved.")
+    print(pdf_path)
+
+    return pdf_path
+def generate_output(txt,prompt):
+    try:
+        gen_config  = genai.GenerationConfig(temperature=0)
+        model = genai.GenerativeModel('models/gemini-1.0-pro-001', generation_config= gen_config)
+        print(prompt)
+        prompt = prompt + "from given text" + txt
+        # print(txt)
+        response = model.generate_content(prompt)
+        response_text  = response.text
+        cleaned_txt = response_text.replace("\n","").replace("","")
+        # cleaned_txt_done = json.loads(cleaned_txt)
+        # df = pd.DataFrame(cleaned_txt_done)
+        return cleaned_txt
+    
+
+    except Exception as e:
+        print(f"Error generating content: {e}")
+        return None
+    
+def main():
+    st.title("PDF Text Generation")
+
+    uploaded_file = st.file_uploader("Upload PDF", type = ["pdf"])
+
+    if uploaded_file:
+        pdf_path = save_uploaded_pdf(uploaded_file)
+        txt = file_read(pdf_path)
+
+        user_prompt = st.text_input("Enter Prompt")
+        
+        if user_prompt:
+            output_df =generate_output(txt,user_prompt)
+            if output_df is not None:
+                st.write(output_df)
+                print(output_df)
+                return output_df
+
+            else:
+                st.error("Error Genrating content.")
+            # print(output_df)
+        # return output_df
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
